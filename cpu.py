@@ -1,14 +1,16 @@
 import array,struct, sys
 from source import Line 
+from ram import Memory, MB
+from binascii import hexlify
 REGISTERS=(
 	('EAX', 'AX', 'AH', 'AL'),
 	('EBX', 'BX', 'BH', 'BL'),
 	('ECX', 'CX', 'CH', 'CL'),
 	('EDX', 'DX', 'DH', 'DL'),
-	('ESI','SI'),
-	('EDI','DI'),
-	('EBP','BP'),
-	('ESP','SP'),
+	('ESI', 'SI'),
+	('EDI', 'DI'),
+	('EBP', 'BP'),
+	('ESP', 'SP'),
 	('EIP',),
 	('FLAGS',),
 )
@@ -17,6 +19,7 @@ FLAGS=(
 	'CF',
 	'ZF',
 	'SF',
+	'OF'
 )
 
 class RegisterFile(object):
@@ -26,7 +29,7 @@ class RegisterFile(object):
 
 		size = len(REGISTERS)*4
 
-		self.memory=array.array('B',[0] * size)
+		self.memory=Memory(size)
 
 		for i,reg_def in enumerate(REGISTERS):
 			self.setupRegister32(i*4, *reg_def)
@@ -69,57 +72,60 @@ class Register(object):
 		self.offset = offset
 		self.width = width 
 
-	def set(self, value):
-		type_code = self.format
-		if value < 0:
-			type_code = type_code.lower()
-		
-		s = struct.pack(type_code, value)
-		arr = array.array('B',struct.unpack(str(len(s))+'B',s))
-		self.memory[self.offset:self.offset+self.width] = arr
-
-	def get(self):
-		type_code = self.format
-		return struct.unpack(type_code,self.rawGet())[0]
-
-	def rawGet(self):
-		return self.memory[self.offset:self.offset+self.width]
-	
 	def hex(self):
-		return ''.join(('%02X' % c) for c in self.rawGet())
+		return hexlify(self.memory.read(self.offset,self.width))
 	
+	def adjust(self, delta):
+		self.set(self.get()+delta)
+
 	def __repr__(self):
 		return 'Register(width=%d, data=%s, value=%s)' % (self.width,self.hex(),self.get())
 
 class Register32(Register):
 	def __init__(self, memory, offset):
 		Register.__init__(self, memory, offset, 4)
-		self.format = '<L'
+
+	def get(self):
+		return self.memory.read32(self.offset)
+
+	def set(self, value):
+		self.memory.write32(self.offset, value)
 
 class Register16(Register):
 	def __init__(self, memory, offset):
 		Register.__init__(self, memory, offset, 2)
-		self.format = '<H'
+	
+	def get(self):
+		return self.memory.read16(self.offset)
+
+	def set(self, value):
+		self.memory.write16(self.offset, value)
+
 
 class Register8(Register):
 	def __init__(self, memory, offset):
 		Register.__init__(self, memory, offset, 1)
-		self.format = 'B'
 
-class Register1(Register):
+	def get(self):
+		return self.memory.read8(self.offset)
+	def set(self, value):
+		self.memory.write8(self.offset, value)
+
+class Register1(Register8):
 	def __init__(self, memory, offset):
 		Register.__init__(self, memory, offset, 1)
-		self.format = 'B'
 
 	def set(self, value):
 		if value!=0:
 			value = 1 
-		Register.set(self,value)
+		Register8.set(self,value)
 
 
 class CPU(object):
-	def __init__(self):
+	def __init__(self, ram_size = 1*MB):
 		self.regs = RegisterFile()
+		self.ram = Memory(ram_size)
+		self.regs.ESP.set(ram_size - 4)
 		self.source = {}
 
 	def loadSource(self, file):
@@ -160,18 +166,35 @@ class CPU(object):
 		current = sorted(source.keys())[0]
 		while current in source:
 			ci = source[current]
-			print '  ',ci
+			print '  %08x: %s' % (ci.address,ci)
 			current += ci.size
 			seen += 1
 
 		if len(source)!=seen:
 			print 'Warning! Unseen lines: %d' % (len(source)-seen)
 
+	def step(self):
+		regEIP = self.regs.EIP
+		eip = regEIP.get()
+		ci = self.currentInstruction()
+		ci.opcode.execute(self, ci.args)
+		if eip == regEIP.get(): # the instruction didn't set EIP, so we need to calculate it
+			regEIP.set(eip+ci.size)
+
+
+	def setFlags(self, **flags):
+		for k,v in flags.items():
+			getattr(self.regs,k).set(v)
+
 if __name__ == '__main__':
+	import pdb
 
 	cpu=CPU()
 	first_address = cpu.loadSource(sys.argv[1])
 	cpu.jump_to(first_address)
-	cpu.dump()
-
 	cpu.walkSource()
+
+	cpu.dump()
+	while True:
+		cpu.step()
+		cpu.dump()

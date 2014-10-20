@@ -15,6 +15,9 @@ class Memory(object):
 	def __init__(self, size):
 		self.mem = array('B',[0]*size)
 
+	def read(self, offset, width):
+		return self.mem[offset:offset+width]
+
 	def read8(self, offset):
 		return M8.unpack_from(self.mem, offset)[0]
 
@@ -25,13 +28,13 @@ class Memory(object):
 		return M32.unpack_from(self.mem, offset)[0]
 
 	def write8(self,offset, value):
-		M8.pack_into(self.mem, offset, value)
+		M8.pack_into(self.mem, offset, value&0xFF)
 
 	def write16(self,offset, value):
-		M16.pack_into(self.mem, offset, value)
+		M16.pack_into(self.mem, offset, value&0xFFFF)
 
 	def write32(self,offset, value):
-		M32.pack_into(self.mem, offset, value)
+		M32.pack_into(self.mem, offset, value&0xFFFFFFFF)
 
 	def write(self, offset, s):
 		self.mem[offset:offset+len(s)]=array('B', [ord(c) for c in s])
