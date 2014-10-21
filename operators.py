@@ -1,5 +1,18 @@
 from arguments import RegisterReference
 import operator as op
+
+def MSB(size):
+	return 2<<(size*8-1)-1
+
+def SignBit(v,size):
+	if v<0:
+			return 1 # duh?
+	else:
+			return boolint(v & MSB(size))
+
+def boolint(x):
+	return int(bool(x))
+
 class Operator(object):
 	def execute(self, cpu, args):
 		raise NotImplementedError('called abstract Operator.execute!')
@@ -81,10 +94,14 @@ class opTEST(Operator):
 	def execute(self, cpu, args):
 		(aFirst, aSecond) = args
 		value = aFirst.get(cpu) & aSecond.get(cpu)
-		self.setFlags(value, aFirst.size)
+		self.setFlags(cpu, value, aFirst.size)
 
-	def setFlags(self, value, size, cf = 0, of = 0 ):
-		cpu.setFlags(CF = cf, OF = of, ZF = int(value == 0), SF = int(bool(value & (2<<(size*8-1)-1))))
+	def setFlags(self, cpu, value, size, cf = 0, of = 0 ):
+		cpu.setFlags(CF = cf, 
+				OF = of, 
+				ZF = int(value == 0), 
+				SF = SignBit(value, size)
+		)
 
 class opLEA(Operator):
 	def execute(self, cpu, args):
@@ -95,11 +112,21 @@ class opCMP(opTEST):
 	def execute(self, cpu, args):
 		(aSource, aAdjust) = args
 		asrc = aSource.get(cpu) 
-		ret = asrc - aAddress.get(cpu)
+		adj = aAdjust.get(cpu)
+		ret = asrc - adj
 
-		cf= int(asrc < aAddress.get(cpu))
-		self.setFlags(ret, aSource.size, cf)
+		cf = int(asrc < adj)
 
+		of=opCMP.calcOverflow(ret,asrc,adj, aSource.size)
+
+		self.setFlags(cpu, ret, aSource.size, cf, of)
+
+
+	@staticmethod
+	def calcOverflow(o1, o2, o3, size):
+		o1,o2,o3 = tuple(SignBit(x, size) for x in (o1,o2,o3))
+
+		return boolint(o2 != o3 and o2 != o1)
 
 class opJMP(Operator):
 	def execute(self, cpu, args):
