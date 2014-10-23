@@ -46,6 +46,9 @@ class ArgumentReference(object):
 	def set(self, cpu, value):
 		raise NotImplementedError('called Reference.set!')
 
+	def adjust(self, cpu, amt):
+		self.set(cpu, self.get(cpu) + amt)
+
 	@property
 	def size(self):
 		raise NotImplementedError('called Reference.size!')
@@ -65,8 +68,9 @@ class UnresolvedArgument(ArgumentReference):
 		raise ValueError('called set on unresolved argument!')
 
 class LiteralReference(ArgumentReference):
-	def __init__(self, value):
+	def __init__(self, value, size = None):
 		self.value = value
+		self.known_size = size 
 
 	def get(self, cpu):
 		return self.value
@@ -76,7 +80,9 @@ class LiteralReference(ArgumentReference):
 
 	@property
 	def size(self):
-		v = self.value
+		if self.known_size is not None:
+			return self.known_size
+		v = self.value 
 		adj = 1 
 		if v<0:
 			v=math.abs(v)
@@ -84,7 +90,7 @@ class LiteralReference(ArgumentReference):
 		elif v==0:
 			v = 1
 
-		return int(math.ceil((int(math.log(v,2))+adj)/8.0))
+		return int(math.ceil((int(math.log(v,2))+adj)/8.0)) # ugly hack do not look directly at
 
 class RegisterReference(ArgumentReference):
 	def __init__(self, name, reg):
