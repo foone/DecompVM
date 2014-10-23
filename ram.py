@@ -10,8 +10,8 @@ M8  = Struct('<B')
 M16 = Struct('<H')
 M32 = Struct('<L')
 
-
 class Memory(object):
+	page_size = 1 * KB
 	def __init__(self, size):
 		self.mem = array('B',[0]*size)
 
@@ -39,10 +39,32 @@ class Memory(object):
 	def write(self, offset, s):
 		self.mem[offset:offset+len(s)]=array('B', [ord(c) for c in s])
 
+	def copy(self, source, dest, width):
+		data = self.mem[source:source+width]
+		self.mem[dest:dest + width] = data
+
 	def dump(self):
 		CHUNK=16
 		for i in range(0,len(self.mem),CHUNK):
 			print '%08x: %s' % (i,hexlify(self.mem[i:i+CHUNK]))
+
+	def allocate(self, size, f = None):
+		m = size % Memory.page_size
+		if m != 0:
+			allocated_size = size + (Memory.page_size - m)
+		else:
+			allocated_size = size
+
+		p = len(self.mem)
+
+		if f is not None:
+			self.mem.fromfile(f, size)
+			if size < allocated_size:
+				self.mem.extend(0 for r in range(allocated_size - size))
+		else:
+			self.mem.extend(0 for r in range(allocated_size))
+
+		return p
 
 
 if __name__=='__main__':
