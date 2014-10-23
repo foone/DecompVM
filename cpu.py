@@ -2,6 +2,8 @@ import array,struct, sys
 from source import Line 
 from ram import Memory, MB
 from binascii import hexlify
+import operators,arguments
+
 REGISTERS=(
 	('EAX', 'AX', 'AH', 'AL'),
 	('EBX', 'BX', 'BH', 'BL'),
@@ -186,15 +188,53 @@ class CPU(object):
 		for k,v in flags.items():
 			getattr(self.regs,k).set(v)
 
+
+	def loadFileIntoRAM(self, path):
+		with open(path,'rb') as f:
+			f.seek(0, 2)
+			size = f.tell()
+			f.seek(0)
+			return self.ram.allocate(size, f), size
+	
+	def allocate(self, size):
+		return self.ram.allocate(size)
+
+	def push(self, value, size = 4):
+		arg = arguments.LiteralReference(value, size)
+		operators.opPUSH().execute(self, (arg,))
+
 if __name__ == '__main__':
 	import pdb
 
 	cpu=CPU()
 	first_address = cpu.loadSource(sys.argv[1])
 	cpu.jump_to(first_address)
-	cpu.walkSource()
+
+	data_offset, size = cpu.loadFileIntoRAM(sys.argv[2])
+	print data_offset, size 
+
+	decompressed_size = struct.unpack('>L', cpu.ram.read(data_offset + 4, 4))[0]
+	print decompressed_size
+
+	out_buffer = cpu.allocate(decompressed_size)
+	print out_buffer
+
+	out_sizebuffer = cpu.allocate(4)
+
+	print out_sizebuffer
+
+	cpu.push(out_sizebuffer)
+	cpu.push(decompressed_size)
+	cpu.push(out_buffer)
+	cpu.push(size-8)
+	cpu.push(data_offset+8)
+
+	cpu.push(0) # fake return address
 
 	cpu.dump()
-	while True:
+	while cpu.regs.EIP.get()!=0:
 		cpu.step()
 		cpu.dump()
+
+	print 'RETURNED TO 0'
+
