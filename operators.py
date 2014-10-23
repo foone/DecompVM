@@ -131,33 +131,53 @@ class opCMP(opTEST):
 class opJMP(Operator):
 	def execute(self, cpu, args):
 		(aDestination,) = args
-		cpu.regs.EIP.set(aDestination)
+		cpu.regs.EIP.set(aDestination.get(cpu))
+
+class opREPMOVS(Operator):
+	def execute(self, cpu, args):
+		(aDestination,aSource) = args
+		ecx = cpu.regs.ECX
+		size = aDestination.size
+		ram = cpu.ram
+
+		while ecx.get() != 0:
+			ram.copy(aSource.get(cpu),aDestination.get(cpu),size)
+
+			ecx.adjust(-size)
+			for reg in (aSource, aDestination):
+				reg.adjust(+size)
+			
+		
 
 
 class opJCC(opJMP):
 	@staticmethod
 	def evalConditional(code, regs):
+		CF,ZF,OF,SF = tuple(r.get() for r in (regs.CF, regs.ZF, regs.OF, regs.SF))
 		if code=='JA':
-			return regs.CF==0 and regs.ZF == 0
+			return CF==0 and ZF == 0
 		elif code=='JAE':
-			return regs.CF==0
+			return CF==0
 		elif code=='JB':
-			return regs.CF==1
+			return CF==1
 		elif code=='JE':
-			return regs.ZF==1
+			return ZF==1
 		elif code=='JG':
-			return regs.ZF and regs.CF==regs.OF
+			return ZF==0 and CF==OF
 		elif code=='JGE':
-			return regs.SF==regs.OF
+			return SF==OF
 
 	def __init__(self, code):
 		self.code = code
+	
 	def execute(self, cpu, args):
 		code = self.code
 		regs = cpu.regs
 		if opJCC.evalConditional(code, regs):
 			opJMP.execute(self, cpu, args)
 
+	def __repr__(self):
+		return '<opJCC (%s)>' % self.code
 
 def resolveOpcode(opcode, args): 
 	code = opcode.code
@@ -197,5 +217,7 @@ def resolveOpcode(opcode, args):
 		return opLEA()
 	elif code == 'CMP':
 		return opCMP()
+	elif code == 'REP MOVS':
+		return opREPMOVS()
 	elif code in ('JA', 'JAE', 'JB', 'JE', 'JG', 'JGE'):
 		return opJCC(code)
