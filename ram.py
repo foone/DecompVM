@@ -16,7 +16,7 @@ class Memory(object):
 		self.mem = array('B',[0]*size)
 
 	def read(self, offset, width):
-		return self.mem[offset:offset+width]
+		return ''.join(chr(x) for x in self.mem[offset:offset+width])
 
 	def read8(self, offset):
 		return M8.unpack_from(self.mem, offset)[0]
@@ -39,9 +39,9 @@ class Memory(object):
 	def write(self, offset, s):
 		self.mem[offset:offset+len(s)]=array('B', [ord(c) for c in s])
 
-	def copy(self, source, dest, width):
-		data = self.mem[source:source+width]
-		self.mem[dest:dest + width] = data
+	def copy(self, source, dest, size):
+		data = self.mem[source:source + size]
+		self.mem[dest:dest + size] = data
 
 	def dump(self):
 		CHUNK=16
