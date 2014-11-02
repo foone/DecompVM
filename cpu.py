@@ -24,6 +24,9 @@ FLAGS=(
 	'OF'
 )
 
+class InvalidEIPError(Exception):
+	pass
+
 class RegisterFile(object):
 	def __init__(self):
 
@@ -152,14 +155,18 @@ class CPU(object):
 		self.regs.EIP.set(address)
 
 	def currentInstruction(self):
-		return self.source.get(self.regs.EIP.get(), None)
+		eip = self.regs.EIP.get()
+		return eip, self.source.get(eip, None)
 
 	def dump(self):
 		print 'CPU STATUS:'
 		self.regs.dump()
 		
-		ci = self.currentInstruction()
-		print 'EIP is {}: {}'.format('valid' if ci is not None else 'invalid', ci)
+		eip, ci = self.currentInstruction()
+		if ci is not None:
+			ci.dump()
+		else:
+			print 'EIP is invalid!'
 
 	def walkSource(self):
 		print 'CPU Source: '
@@ -177,8 +184,9 @@ class CPU(object):
 
 	def step(self):
 		regEIP = self.regs.EIP
-		eip = regEIP.get()
-		ci = self.currentInstruction()
+		eip, ci = self.currentInstruction()
+		if ci is None:
+			raise InvalidEIPError()
 		ci.opcode.execute(self, ci.args)
 		if eip == regEIP.get(): # the instruction didn't set EIP, so we need to calculate it
 			regEIP.set(eip+ci.size)
