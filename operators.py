@@ -135,17 +135,18 @@ class opJMP(Operator):
 
 class opREPMOVS(Operator):
 	def execute(self, cpu, args):
-		(aDestination,aSource) = args
+		size = args[0].size
+		(aDestination,aSource) = [arg.unwrap().base for arg in args] # we need to deal with the pointer values, so remove the PointerReference, and get the raw RegisterReference
 		ecx = cpu.regs.ECX
-		size = aDestination.size
 		ram = cpu.ram
+
 
 		while ecx.get() != 0:
 			ram.copy(aSource.get(cpu),aDestination.get(cpu),size)
 
-			ecx.adjust(-size)
+			ecx.adjust(-1)
 			for reg in (aSource, aDestination):
-				reg.adjust(+size)
+				reg.adjust(cpu, +size)
 			
 		
 
