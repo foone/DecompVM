@@ -3,7 +3,7 @@ HEX_VALUE_RE=re.compile('^0x([0-9A-F]+)$',re.IGNORECASE)
 DECIMAL_VALUE_RE=re.compile('^([0-9]+)$')
 POINTER_RE = re.compile('^(BYTE|WORD|DWORD) PTR (?:[ed]s:)?\[([^]]+)\]$')
 ADDRESS_REFERENCE_RE = re.compile('^\[([^]]+)\]$')
-ADDRESS_REFERENCE_MATH_RE = re.compile(r'^(e\w\w)(?:[+-](e\w\w)\*(\d+))?(?:[+-]((?:0x)?[0-9a-fA-F]+))?$',re.IGNORECASE)
+ADDRESS_REFERENCE_MATH_RE = re.compile(r'^(e\w\w)(?:([+-])(e\w\w)\*(\d+))?(?:([+-])((?:0x)?[0-9a-fA-F]+))?$',re.IGNORECASE)
 
 TYPE_TO_SIZE={'BYTE':1,'WORD':2,'DWORD':4}
 
@@ -23,12 +23,16 @@ def resolveArgument(val, cpu):
 	am=ADDRESS_REFERENCE_RE.match(val)
 	if am:
 		return resolveAddressReference(am.group(1),cpu)
-	
+	if val in '+-':
+		return SignReference(val)
 	print 'UNRESOLVED', val
 
 def resolveAddressReference(arg, cpu):
 	arm = ADDRESS_REFERENCE_MATH_RE.match(arg)
 	args = []
+
+	#base, mult_sign, mult_reg, k, adjust_sign, adjust  = arm.groups()
+
 	for arg in arm.groups():
 		if arg is not None:
 			args.append(resolveArgument(arg, cpu))
@@ -66,6 +70,20 @@ class UnresolvedArgument(ArgumentReference):
 
 	def set(self, cpu, value):
 		raise ValueError('called set on unresolved argument!')
+
+class SignReference(ArgumentReference):
+	def __init__(self, value):
+		self.value = value
+
+	def get(self, cpu):
+		if self.value == '-':
+			return -1
+		else:
+			return +1
+
+	def set(self, cpu, value):
+		raise ValueError('Tried to set a SignReference')
+
 
 class LiteralReference(ArgumentReference):
 	def __init__(self, value, size = None):
@@ -120,27 +138,41 @@ class RegisterReference(ArgumentReference):
 
 
 class AddressReference(ArgumentReference):
-	def __init__(self, base=None, mult_reg = None, k = 0, adjust = 0):
+	def __init__(self, base=None, mult_sign = None, mult_reg = None, k = 0, adjust_sign = None, adjust_value = 0):
+		ArgumentReference.__init__(self, None)
 		self.base = base
+		self.mult_sign = mult_sign
 		self.mult_reg = mult_reg
 		self.k = k
-		self.adjust = adjust
+		self.adjust_sign = adjust_sign
+		self.adjust_value = adjust_value
 
 	def get(self, cpu):
 		address = 0 
 		if self.base is not None:
 			address += self.base.get(cpu)
 		if self.mult_reg is not None:
-			address += (self.mult_reg.get(cpu) * self.k.get(cpu))
-		if self.adjust is not None:
-			address += self.adjust.get(cpu)
+			address += self.mult_sign.get(cpu) * (self.mult_reg.get(cpu) * self.k.get(cpu))
+		if self.adjust_value is not None:
+			address += self.adjust_sign.get(cpu) * self.adjust_value.get(cpu)
 		return address
 
 	def set(self, cpu, value):
 		raise ValueError('AddressReferences cannot be set')
 
 	def __repr__(self):
-		return 'AddressReference(base=%s + mult_reg=%s * k=%s + adjust=%s)' % (self.base, self.mult_reg, self.k, self.adjust)
+		parts=['AddressReference(']
+		if self.base is not None:
+			parts.append('base=%s' % self.base)
+
+		if self.mult_reg is not None:
+			parts.append(' %s ( mult_reg=%s * k=%s )' % (self.mult_sign.value,self.mult_reg,self.k))
+
+		if self.adjust is not None:
+			parts.append(' %s adjust_value=%s' % (self.adjust_sign.value, self.adjust_value))
+
+		parts.append(')')
+		return ''.join(parts)
 
 class PointerReference(ArgumentReference):
 	def __init__(self, width, value):
@@ -168,6 +200,8 @@ class PointerReference(ArgumentReference):
 		else:
 			return cpu.ram.write8(address, value)
 		
+	def unwrap(self):
+		return self.value
 
 	@property
 	def size(self):
