@@ -74,6 +74,11 @@ EIP 00438910"""
 				continue
 			getattr(cpu.regs,reg).set(int(value,16))
 
+	def runUntilEIP0(self):
+		cpu = self.cpu
+		EIP = cpu.regs.EIP
+		while EIP.get()!=0:
+			cpu.step()
 
 	def saveResults(self, path):
 		data = self.cpu.ram.read(self.out_buffer, self.decompressed_size)
@@ -82,7 +87,6 @@ EIP 00438910"""
 if __name__=='__main__':
 	import sys
 	decomp = Decompressor(sys.argv[1])
-	decomp.callTest()
-	bug = Debugger(decomp.cpu)
-	bug.interactive()
+	decomp.call()
+	decomp.runUntilEIP0()
 	decomp.saveResults(sys.argv[2])
