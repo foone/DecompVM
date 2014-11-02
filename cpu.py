@@ -211,6 +211,37 @@ class CPU(object):
 		arg = arguments.LiteralReference(value, size)
 		operators.opPUSH().execute(self, (arg,))
 
+	def findSource(self,target, before=0, after=0):
+		source = self.source
+
+		results={}
+		if target in source:
+			ci=results[target]=source[target]
+			if after:
+				c=ci
+				for i in range(after):
+					nextaddress = c.address + c.size
+					if nextaddress in source:
+						c=results[nextaddress] = source[nextaddress]
+					else:
+						break
+			if before:
+				predecessors = self.buildPredecessorMap()
+				c=ci
+				for i in range(before):
+					if c.address in predecessors:
+						c = predecessors[c.address]
+						results[c.address] = c 
+					else:
+						break
+		return results
+
+	def buildPredecessorMap(self):
+		predecessors={}
+		for ci in self.source.values():
+			predecessors[ci.address+ci.size] = ci
+		return predecessors
+
 if __name__ == '__main__':
 	import pdb
 
