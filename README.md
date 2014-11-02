@@ -16,9 +16,10 @@ Steps to use:
 TODO: 
 =========
 
-* Document what tiny subset of x86 this VM supports
+* Document what tiny subset of x86 this VM supports.
 * Optimize the VM. Large decompressions are slow (300k=5s)
-* ~~Test if the free demo has the decompression functions and make extract.py support them if so~~
+* ~~Test if the free demo has the decompression functions and make extract.py support them if so~~ **Done!**
+* Confirm that objdump can actually be used on windows (ie figure out the mingw dependencies mess).
 
 Credits & License:
 ==================
