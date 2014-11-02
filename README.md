@@ -20,6 +20,7 @@ TODO:
 * Optimize the VM. Large decompressions are slow (300k=5s)
 * ~~Test if the free demo has the decompression functions and make extract.py support them if so~~ **Done!**
 * Confirm that objdump can actually be used on windows (ie figure out the mingw dependencies mess).
+* Add an automated way to get the trial installer, extract it, and run extract.py on it. 
 
 Credits & License:
 ==================
