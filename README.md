@@ -29,7 +29,7 @@ TODO:
 * ~~Test if the free demo has the decompression functions and make extract.py support them if so~~ **Done!**
 * ~~Confirm that objdump can actually be used on windows (ie figure out the mingw dependencies mess).~~ **Done!**
 * Write an automated way to grab the mingw files and auto-extract them.
-* Add an automated way to get the trial installer, extract it, and run extract.py on it. 
+* Add an automated way to get [the trial installer](ftp://ftp.microsoft.com/deskapps/kids/3DMM.EXE), extract it, and run extract.py on it. 
 
 Credits & License:
 ==================
