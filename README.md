@@ -8,7 +8,7 @@ This is the replacement for DecompProxy, which is Windows-only. DecompVM runs an
 Steps to use:
 ==========
 
-1. Get the 3DMOVIE.EXE file from a copy of Microsoft 3D Movie Maker, or 3DMTRIAL.EXE from [the demo](ftp://ftp.microsoft.com/deskapps/kids/3dmm.exe).
+1. Get the 3DMOVIE.EXE file from a copy of Microsoft 3D Movie Maker, or 3DMTRIAL.EXE from the demo:  ftp://ftp.microsoft.com/deskapps/kids/3dmm.exe (copy/paste, ftp links are broken on github)
 2. Get objdump(/.exe) from GNU bintools.
 3. Run extract.py to generate Decompress(1/2).s
 4. Run python decompress.py input.bin output.bin
@@ -29,7 +29,8 @@ TODO:
 * ~~Test if the free demo has the decompression functions and make extract.py support them if so~~ **Done!**
 * ~~Confirm that objdump can actually be used on windows (ie figure out the mingw dependencies mess).~~ **Done!**
 * Write an automated way to grab the mingw files and auto-extract them.
-* Add an automated way to get [the trial installer](ftp://ftp.microsoft.com/deskapps/kids/3DMM.EXE), extract it, and run extract.py on it. 
+* Add an automated way to get the trial installer, extract it, and run extract.py on it. 
+* Move decompress.py to use argparse instead of hardcoded sys.argv[]
 
 Credits & License:
 ==================
